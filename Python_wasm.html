@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.18.1/full/pyodide.js"></script>
+  </head>
+  <body>
+    <button id="train" onclick="trainModel()" type="button">Train</button>
+    <p>Enter a number to predict :</p>
+    <input type="text" id="input" />
+    <button id="predict" onclick="testModel()" type="button">Predict</button>
+    <br />
+    <p>Current status : <span id="status"></span></p>
+
+    <script type="text/javascript">
+      async function main() {
+        document.getElementById("train").disabled = true;
+        document.getElementById("predict").disabled = true;
+        document.getElementById("status").innerHTML = "Loading packages...";
+        const pyodide = await loadPyodide({
+          indexURL: "https://cdn.jsdelivr.net/pyodide/v0.18.1/full/",
+        });
+        await pyodide.loadPackage("scikit-learn");
+        await pyodide.loadPackage("numpy");
+        document.getElementById("status").innerHTML =
+          "Loading packages finished !";
+        document.getElementById("train").disabled = false;
+        return pyodide;
+      }
+      let pyodideReadyPromise = main();
+
+      async function trainModel() {
+        document.getElementById("status").innerHTML = "Training model...";
+        let pyodide = await pyodideReadyPromise;
+        await pyodide.runPythonAsync(`
+          from sklearn.linear_model import LinearRegression
+          import numpy as np
+          x = np.array([-1.0 , 0.0 , 1.0, 2.0, 10.0, 100.0]).reshape(-1, 1) #2x-1
+          y =  np.array([-2.0 , -1.0 , 1.0, 3.0, 19.0, 199.0])
+
+          reg = LinearRegression().fit(x,y)
+        `);
+        document.getElementById("status").innerHTML =
+          "Training model finished !";
+        document.getElementById("train").disabled = true;
+        document.getElementById("predict").disabled = false;
+      }
+
+      async function testModel() {
+        document.getElementById("status").innerHTML = "Prediction...";
+        globalThis.input = parseFloat(document.getElementById("input").value);
+        let pyodide = await pyodideReadyPromise;
+        console.log(
+          await pyodide.runPythonAsync(`
+          import js
+        `)
+        );
+        document.getElementById("status").innerHTML =
+          "Prediction finished ! Result : " +
+          (await pyodide.runPythonAsync(`round(reg.predict([[js.input]])[0])`));
+        );
+      }
+    </script>
+  </body>
+</html>
